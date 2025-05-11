@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>مراجعة الفرق</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    h2 {
+      color: #333;
+    }
+    .team-card, .edit-request-card {
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      background-color: #fff;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin: 8px 0 4px;
+    }
+    input, select, textarea {
+      width: 100%;
+      max-width: 400px;
+      padding: 6px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin: 5px 5px 0 0;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      background-color: #f1c40f;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #e67e22;
+    }
+    img {
+      margin-top: 10px;
+      max-width: 120px;
+    }
+
+    .team-card {
+      background: white;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+    }
+    .team-card input, .team-card select {
+      width: 100%;
+      margin-bottom: 8px;
+      padding: 6px;
+    }
+    .team-card img {
+      max-width: 80px;
+      margin-bottom: 10px;
+    }
+    .buttons {
+      display: flex;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>📝 مراجعة الفرق المرسلة</h2>
+  <div id="teamsList"></div>
+
+  <h2>📩 طلبات التعديل اليدوي</h2>
+  <div id="editRequestsList"></div>
+
+
+
+
+  
+  <h2>إدارة كل الفرق</h2>
+  <h3>🔍 البحث عن الفرق</h3>
+  <input type="text" id="searchName" placeholder="🔎 اسم الفريق" oninput="fetchTeams()" />
+  <select id="searchRegion" onchange="fetchTeams()">
+    <option value="">كل الأقاليم</option>
+    <option value="النينجا">النينجا</option>
+    <option value="الفايكينغ">الفايكينغ</option>
+    <option value="القراصنة">القراصنة</option>
+    <option value="بليتش">بليتش</option>
+    <option value="نوفا">نوفا</option>
+    <option value="العمالقة">العمالقة</option>
+    <option value="الأباطرة">الأباطرة</option>
+    <option value="الفراعنة">الفراعنة</option>
+    <option value="المماليك">المماليك</option>
+    <option value="المافيا">المافيا</option>
+    <!-- أضف باقي الأقاليم هنا حسب الحاجة -->
+  </select>
+  <select id="searchRank" onchange="fetchTeams()">
+    <option value="">كل التصنيفات</option>
+    <option value="ذهبي">ذهبي</option>
+    <option value="فضي">فضي</option>
+    <option value="برونزي">برونزي</option>
+    <option value="بدون تصنيف">بدون تصنيف</option>
+  </select>
+  <div id="teamsContainer"></div>
+
+
+
+  <script>
+const firebaseConfig = {
+      apiKey: "AIzaSyD5h5LAp9bVY9Xrx0yF8PaXih4841vSgBQ",
+      authDomain: "workermanager999.firebaseapp.com",
+      databaseURL: "https://workermanager999-default-rtdb.firebaseio.com",
+      projectId: "workermanager999",
+      storageBucket: "workermanager999.appspot.com",
+      messagingSenderId: "961550697494",
+      appId: "1:961550697494:web:4339c2bfc5c874496de137",
+      measurementId: "G-99GTSST8VT"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const teamsDiv = document.getElementById("teamsList");
+    const requestsDiv = document.getElementById("editRequestsList");
+
+    function calculateRank(points) {
+      if (points >= 800) return "ذهبي";
+      else if (points >= 500) return "فضي";
+      else if (points >= 250) return "برونزي";
+      else return "بدون تصنيف";
+    }
+
+    function fetchTeams() {
+  const container = document.getElementById("teamsContainer");
+  const nameFilter = document.getElementById("searchName").value.toLowerCase();
+  const regionFilter = document.getElementById("searchRegion").value;
+  const rankFilter = document.getElementById("searchRank").value;
+
+  container.innerHTML = "";
+  db.ref("teams").once("value").then(snapshot => {
+    snapshot.forEach(child => {
+      const key = child.key;
+      const data = child.val();
+
+      // تطبيق الفلاتر
+      const nameMatch = data.name?.toLowerCase().includes(nameFilter);
+      const regionMatch = !regionFilter || data.region === regionFilter;
+      const rankMatch = !rankFilter || data.rank === rankFilter;
+
+      if (nameMatch && regionMatch && rankMatch) {
+        const div = document.createElement("div");
+        div.className = "team-card";
+        div.innerHTML = `
+          <strong>اسم الفريق:</strong>
+          <input id="name-${key}" value="${data.name || ''}"> <br/>
+          
+          <strong>رابط الشعار:</strong>
+          <input id="logo-${key}" value="${data.logo || ''}"> <br/>
+
+          <strong>الإقليم:</strong>
+          <input id="region-${key}" value="${data.region || ''}"> <br/>
+
+          <strong>النقاط:</strong>
+          <input type="number" id="points-${key}" value="${data.points || 0}"> <br/>
+
+          <strong>الحالة:</strong>
+          <select id="status-${key}">
+            <option value="مفتوح" ${data.status === "مفتوح" ? "selected" : ""}>مفتوح</option>
+            <option value="مغلق" ${data.status === "مغلق" ? "selected" : ""}>مغلق</option>
+          </select>  <br/>
+
+          <img src="${data.logo}" alt="شعار الفريق"><br>
+          <div class="buttons">
+            <button onclick="saveTeam('${key}')">💾 حفظ</button>
+            <button onclick="deleteTeam('${key}')">🗑 حذف</button>
+          </div> <br/>
+        `;
+        container.appendChild(div);
+      }
+    });
+  });
+}
+
+
+
+    function saveTeam(key) {
+      const name = document.getElementById(`name-${key}`).value;
+      const logo = document.getElementById(`logo-${key}`).value;
+      const region = document.getElementById(`region-${key}`).value;
+      const points = parseInt(document.getElementById(`points-${key}`).value) || 0;
+      const status = document.getElementById(`status-${key}`).value;
+      const rank = calculateRank(points);
+
+      db.ref("teams/" + key).update({
+        name, logo, region, points, status, rank, updatedAt: new Date().toISOString()
+      }).then(() => {
+        alert("✅ تم حفظ التعديلات");
+      }).catch(err => {
+        alert("❌ حدث خطأ: " + err.message);
+      });
+    }
+
+    function deleteTeam(key) {
+      const teamRef = db.ref("teams/" + key);
+      teamRef.once("value").then(snapshot => {
+        const data = snapshot.val();
+        if (data) {
+          db.ref("rejected_teams").push(data).then(() => {
+            teamRef.remove();
+            alert("🚫 تم نقل الفريق إلى جدول المرفوضين.");
+          });
+        }
+      });
+    }
+
+    fetchTeams();
+  </script>
+
+
+  <script>
+    
+
+    // عرض الفرق المعلقة
+    db.ref("pending_teams").on("value", (snapshot) => {
+      teamsDiv.innerHTML = "";
+      snapshot.forEach((child) => {
+        const team = child.val();
+        const key = child.key;
+
+        const div = document.createElement("div");
+        div.className = "team-card";
+
+        div.innerHTML = `
+          <label>اسم الفريق: <input type="text" id="name-${key}" value="${team.name}"></label>
+          <label>رابط الشعار: <input type="text" id="logo-${key}" value="${team.logo}"></label>
+          <label>الإقليم: <input type="text" id="region-${key}" value="${team.region}"></label>
+          <label>النقاط: <input type="number" id="points-${key}" value="${team.points}"></label>
+          <label>أضيف بواسطة: <input type="text" id="addedBy-${key}" value="${team.addedBy}"></label>
+          <label>حالة الفريق:
+            <select id="status-${key}">
+              <option value="">اختر حالة</option>
+              <option value="مفتوح">مفتوح</option>
+              <option value="مغلق">مغلق</option>
+            </select>
+          </label>
+          <img src="${team.logo}" alt="شعار الفريق"><br>
+          <button onclick="saveEdits('${key}')">💾 حفظ التعديلات</button>
+          <button onclick="acceptTeam('${key}')">✅ قبول</button>
+          <button onclick="rejectTeam('${key}')">❌ رفض</button>
+        `;
+
+        teamsDiv.appendChild(div);
+      });
+    });
+
+    function saveEdits(key) {
+      const points = parseInt(document.getElementById(`points-${key}`).value);
+      let rank = "بدون تصنيف";
+      if (points >= 800) rank = "ذهبي";
+      else if (points >= 500) rank = "فضي";
+      else if (points >= 250) rank = "برونزي";
+
+      const updatedData = {
+        name: document.getElementById(`name-${key}`).value,
+        logo: document.getElementById(`logo-${key}`).value,
+        region: document.getElementById(`region-${key}`).value,
+        points,
+        rank,
+        addedBy: document.getElementById(`addedBy-${key}`).value,
+        status: document.getElementById(`status-${key}`).value,
+        updatedAt: new Date().toISOString()
+      };
+
+      db.ref("pending_teams/" + key).update(updatedData)
+        .then(() => alert("✅ تم حفظ التعديلات وتحديث التصنيف تلقائيًا."))
+        .catch(err => alert("❌ خطأ أثناء التحديث: " + err.message));
+    }
+
+    function acceptTeam(key) {
+      const teamRef = db.ref("pending_teams/" + key);
+      teamRef.once("value").then(snapshot => {
+        const team = snapshot.val();
+        if (team) {
+          db.ref("teams").push(team).then(() => {
+            teamRef.remove();
+            alert("✅ تم قبول الفريق.");
+          });
+        }
+      });
+    }
+
+    function rejectTeam(key) {
+      const teamRef = db.ref("pending_teams/" + key);
+      teamRef.once("value").then(snapshot => {
+        const team = snapshot.val();
+        if (team) {
+          db.ref("rejected_teams").push(team).then(() => {
+            teamRef.remove();
+            alert("❌ تم رفض الفريق.");
+          });
+        }
+      });
+    }
+
+    // عرض طلبات التعديل اليدوي
+// عرض طلبات التعديل اليدوي
+db.ref("demonds/editTimesDemonds").on("value", (snapshot) => {
+  requestsDiv.innerHTML = "";
+  snapshot.forEach((child) => {
+    const request = child.val();
+    const key = child.key;
+
+    const div = document.createElement("div");
+    div.className = "edit-request-card";
+
+    div.innerHTML = `
+      <strong>مقدم الطلب:</strong> ${request.requestedBy || 'غير محدد'}<br>
+      <strong>الوصف:</strong><br>
+      <textarea readonly rows="3">${request.description || 'لا يوجد وصف'}</textarea><br>
+      <small>تاريخ الإرسال: ${request.createdAt ? new Date(request.createdAt).toLocaleString() : '---'}</small><br>
+      <button onclick="deleteRequest('${key}')">🗑️ حذف الطلب</button>
+    `;
+
+    requestsDiv.appendChild(div);
+  });
+});
+
+// دالة الحذف
+function deleteRequest(key) {
+  if (confirm("هل أنت متأكد من حذف هذا الطلب؟")) {
+    db.ref("demonds/editTimesDemonds").child(key).remove()
+      .then(() => alert("تم حذف الطلب بنجاح"))
+      .catch((err) => alert("حدث خطأ أثناء الحذف: " + err.message));
+  }
+}
+
+
+  </script>
+</body>
+</html>
